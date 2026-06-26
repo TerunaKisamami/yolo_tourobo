@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+ENV/
+env/
+
+# IDEs
+.vscode/
+.idea/
+
+# YOLO & Datasets (容量が大きいためGit管理から除外)
+yolo_assets/
+yolo11n.pt
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,4 @@
+ultralytics
+opencv-python
+pyrealsense2
+openvino

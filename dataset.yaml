@@ -1,0 +1,16 @@
+# YOLOv8 / YOLO11 Dataset Configuration
+
+# アノテーションした画像が保存されているパスを指定します
+# （絶対パスか、YOLO実行ディレクトリからの相対パス）
+path: ./yolo_assets/datasets/robocon_data # データセットのルートディレクトリ
+train: train/images # 学習用画像のディレクトリ (pathからの相対パス)
+val: valid/images # 検証用画像のディレクトリ (pathからの相対パス)
+
+# クラス数 (現状は水色とピンクのバレーボール、および中深皿の3つ。今後追加される場合は数値を増やす)
+nc: 3
+
+# クラス名 (アノテーションツールで設定するクラスID（0, 1...）と対応させる必要があります)
+names:
+  0: volleyball_cyan
+  1: volleyball_pink
+  2: plate

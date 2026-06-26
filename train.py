@@ -1,0 +1,35 @@
+import os
+from ultralytics import YOLO
+
+def main():
+    # 1. モデルの読み込み
+    # 新規学習の場合は事前学習済みの軽量モデル（yolo11n.pt）をベースにします。
+    # Minisforum TH50のスペックを考慮し、処理速度の速い nano(n) または small(s) モデルを推奨。
+    model = YOLO('yolo11n.pt') 
+
+    # 2. 学習の実行
+    # data: データセット設定ファイルのパス
+    # epochs: 学習を繰り返す回数 (最初は50~100程度で様子を見ます)
+    # imgsz: 入力画像サイズ (デフォルトは640)
+    # batch: バッチサイズ (CPU環境やメモリ不足の場合は減らしてください)
+    # device: 'cpu' （もし強力なNVIDIA GPUを積んだ別のPCで学習できる場合は '0' などを指定します）
+    # 
+    # [!] 注意: TH50 (Intel CPU) でも学習は可能ですが、非常に時間がかかります。
+    # 可能であれば、学習自体はGoogle Colab等のGPU環境で行い、推論(predict)をTH50で行う構成をお勧めします。
+    
+    print("学習を開始します...")
+    results = model.train(
+        data='dataset.yaml',
+        epochs=100,
+        imgsz=640,
+        batch=8,
+        device='cpu', 
+        project='yolo_assets/robocon_models',
+        name='custom_model_v1'
+    )
+
+    print("学習が完了しました！")
+    print("モデルは 'yolo_assets/robocon_models/custom_model_v1/weights/best.pt' に保存されています。")
+
+if __name__ == '__main__':
+    main()
