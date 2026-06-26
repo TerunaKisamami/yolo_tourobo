@@ -63,6 +63,5 @@ if __name__ == '__main__':
     print("  python train.py を実行してください。")
     print("  学習完了後、'yolo_assets/robocon_models/custom_model_v1/weights/best.pt' に保存されます。")
     print("\n【カメラによるリアルタイム検出を試したい場合】")
-    print("  ・Webカメラの場合: python predict_webcam.py")
-    print("  ・RealSenseの場合: python predict_realsense.py")
+    print("  python predict_realsense.py を実行してください。")
 

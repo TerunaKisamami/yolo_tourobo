@@ -122,7 +122,7 @@ detector = YoloDetector(model_path='yolo_assets/robocon_models/custom_model_v1/w
 すでに学習済みの `best.pt` を使ってオートアノテーション（自動枠付け）を行い、効率よくデータを増やします。
 
 1. **推論スクリプトのモデルを書き換える**
-   [predict_realsense.py](file:///c:/Users/hatsu/Downloads/yolo/yolo_test/predict_realsense.py) または [predict_webcam.py](file:///c:/Users/hatsu/Downloads/yolo/yolo_test/predict_webcam.py) を開き、初期化時の `model_path` を学習済みモデルに変更します。
+   [predict_realsense.py](file:///home/hatsu/Robobobo/yolo_tourobo/predict_realsense.py) を開き、初期化時の `model_path` を学習済みモデルに変更します。
    ```python
    # 変更前
    detector = YoloDetector(model_path='yolo11n.pt', conf_threshold=0.5)
@@ -135,7 +135,7 @@ detector = YoloDetector(model_path='yolo_assets/robocon_models/custom_model_v1/w
 3. **Roboflowへの追加と手直し**
    保存された画像と `.txt` ファイルをまとめて Roboflow にアップロードすると、自動でアノテーションが読み込まれます。必要に応じて位置のズレのみを手動で修正します。
 4. **再学習とOpenVINO変換**
-   Roboflow で新しいバージョンを生成（Generate）してダウンロードし、`yolo_assets/datasets/robocon_data` に上書き配置した後、[train.py](file:///c:/Users/hatsu/Downloads/yolo/yolo_test/train.py) を実行して再学習し、[convert_openvino.py](file:///c:/Users/hatsu/Downloads/yolo/yolo_test/convert_openvino.py) を実行してモデルを更新します。
+   Roboflow で新しいバージョンを生成（Generate）してダウンロードし、`yolo_assets/datasets/robocon_data` に上書き配置した後、[train.py](file:///home/hatsu/Robobobo/yolo_tourobo/train.py) を実行して再学習し、[convert_openvino.py](file:///home/hatsu/Robobobo/yolo_tourobo/convert_openvino.py) を実行してモデルを更新します。
 
 ---
 
@@ -147,7 +147,7 @@ detector = YoloDetector(model_path='yolo_assets/robocon_models/custom_model_v1/w
    新しく追加する物体は今のAIでは検出できないため、撮影スクリプトで **`s` キー** を使い、生の画像（`.jpg`）として保存します。アップロード後、Roboflow 上で手動で枠囲みとクラス割り当てを行います。
 3. **設定ファイル（`dataset.yaml`）の更新**
    新しいバージョンをダウンロードして配置すると、クラス数が増えます。
-   それに合わせてローカルの [dataset.yaml](file:///c:/Users/hatsu/Downloads/yolo/yolo_test/dataset.yaml) の `nc`（クラス数）と `names`（クラス名リスト）を手動で更新します。
+   それに合わせてローカルの [dataset.yaml](file:///home/hatsu/Robobobo/yolo_tourobo/dataset.yaml) の `nc`（クラス数）と `names`（クラス名リスト）を手動で更新します。
    * **例：4つ目のクラス `target_box` を追加する場合**
      ```yaml
      nc: 4
@@ -158,7 +158,7 @@ detector = YoloDetector(model_path='yolo_assets/robocon_models/custom_model_v1/w
        3: target_box  # 新規追加
      ```
 4. **再学習とOpenVINO変換**
-   [train.py](file:///c:/Users/hatsu/Downloads/yolo/yolo_test/train.py) ➔ [convert_openvino.py](file:///c:/Users/hatsu/Downloads/yolo/yolo_test/convert_openvino.py) の順に実行して、新しいクラスに対応したモデルを作成します。
+   [train.py](file:///home/hatsu/Robobobo/yolo_tourobo/train.py) ➔ [convert_openvino.py](file:///home/hatsu/Robobobo/yolo_tourobo/convert_openvino.py) の順に実行して、新しいクラスに対応したモデルを作成します。
 
 ---
 
@@ -183,16 +183,16 @@ graph TD
 ### 📍 各フェーズの詳細とやることリスト
 
 #### 【フェーズ1】 検出の安定化（現在の目標）
-* **目標**: [predict_realsense.py](file:///c:/Users/hatsu/Downloads/yolo/yolo_test/predict_realsense.py) で対象の物体（バレーボールや中深皿）をカメラに映した際、ブレや誤検出なく、バウンディングボックス（四角）が安定して描画されること。
+* **目標**: [predict_realsense.py](file:///home/hatsu/Robobobo/yolo_tourobo/predict_realsense.py) で対象の物体（バレーボールや中深皿）をカメラに映した際、ブレや誤検出なく、バウンディングボックス（四角）が安定して描画されること。
 * **やること**:
-  * [ ] [predict_realsense.py](file:///c:/Users/hatsu/Downloads/yolo/yolo_test/predict_realsense.py) の `a` キーで多様なアングル・背景の画像を収集する（30〜50枚からスタートし、最終的に1クラス100〜200枚を目指す）。
+  * [ ] [predict_realsense.py](file:///home/hatsu/Robobobo/yolo_tourobo/predict_realsense.py) の `a` キーで多様なアングル・背景の画像を収集する（30〜50枚からスタートし、最終的に1クラス100〜200枚を目指す）。
   * [ ] Roboflowなどのアノテーションツールを用いてデータをアノテーションし、YOLOv8形式でダウンロードする。
-  * [ ] [train.py](file:///c:/Users/hatsu/Downloads/yolo/yolo_test/train.py) で学習を実行し、高精度な `best.pt` を作成する。
+  * [ ] [train.py](file:///home/hatsu/Robobobo/yolo_tourobo/train.py) で学習を実行し、高精度な `best.pt` を作成する。
 
 #### 【フェーズ2】 推論の高速化（OpenVINO変換）
 * **目標**: ロボット搭載PC（Minisforum TH50などのIntel CPU環境）で、遅延（カクつき）なくリアルタイムで物体検出が動作すること。
 * **やること**:
-  * [ ] [convert_openvino.py](file:///c:/Users/hatsu/Downloads/yolo/yolo_test/convert_openvino.py) を実行して、学習した `best.pt` を OpenVINO 形式にエクスポートする。
+  * [ ] [convert_openvino.py](file:///home/hatsu/Robobobo/yolo_tourobo/convert_openvino.py) を実行して、学習した `best.pt` を OpenVINO 形式にエクスポートする。
   * [ ] `predict_realsense.py` 内で読み込むモデルパスを `best_openvino_model/` ディレクトリに変更し、動作速度（FPS）が向上することを確認する。
 
 #### 【フェーズ3】 3D座標（デプス）の統合
