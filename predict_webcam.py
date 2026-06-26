@@ -13,8 +13,8 @@ def main():
     print("カメラを起動しました。推論を開始します。")
     print("終了するには映像ウィンドウを選択した状態で 'q' キーを押してください。")
 
-    # YOLO検出器の初期化 (標準の軽量モデル yolo11n.pt を使用)
-    detector = YoloDetector(model_path='yolo11n.pt', conf_threshold=0.5)
+    # YOLO検出器の初期化 (マージされたカスタム学習済みモデル best.pt を使用)
+    detector = YoloDetector(model_path='yolo_assets/robocon_models/custom_model_v1/weights/best.pt', conf_threshold=0.5)
 
     try:
         while True:

@@ -35,8 +35,8 @@ def main():
         return
 
     # 2. YOLO検出器の初期化
-    # 最初はテストとして標準の 'yolo11n.pt' で動作確認を行います。
-    detector = YoloDetector(model_path='yolo11n.pt', conf_threshold=0.5)
+    # マージされたカスタム学習済みモデル（best.pt）を使用します。
+    detector = YoloDetector(model_path='yolo_assets/robocon_models/custom_model_v1/weights/best.pt', conf_threshold=0.5)
 
     print("推論を開始します。終了するには画面を選択した状態で 'q' キーを押してください。")
     print("画像を保存するには 's' キーを押してください。")
