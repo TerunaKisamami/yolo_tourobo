@@ -11,6 +11,6 @@ nc: 3
 
 # クラス名 (アノテーションツールで設定するクラスID（0, 1...）と対応させる必要があります)
 names:
-  0: volleyball_cyan
-  1: volleyball_pink
+  0: volleyball_pink
+  1: volleyball_cyan
   2: plate

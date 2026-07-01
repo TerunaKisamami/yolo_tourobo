@@ -25,7 +25,8 @@ def main():
         batch=8,
         device='cpu', 
         project='yolo_assets/robocon_models',
-        name='custom_model_v1'
+        name='custom_model_v1',
+        exist_ok=True
     )
 
     print("学習が完了しました！")
