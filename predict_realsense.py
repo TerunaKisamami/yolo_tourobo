@@ -10,13 +10,19 @@ def main():
     # コマンドライン引数の設定
     parser = argparse.ArgumentParser(description='RealSense YOLO Detection and Image Collection')
     parser.add_argument('--save_dir', type=str, default='yolo_assets/collected_images', 
-                        help='画像を保存するディレクトリのパス (デフォルト: yolo_assets/collected_images)')
+                        help='基本の保存ディレクトリパス (デフォルト: yolo_assets/collected_images)')
+    parser.add_argument('--target', type=str, default='block_red',
+                        help='初期の撮影対象名。実行中に0〜4キーで変更可能です。')
     args = parser.parse_args()
 
-    # 保存先ディレクトリの作成と確認
-    save_dir = args.save_dir
-    os.makedirs(save_dir, exist_ok=True)
-    print(f"📂 画像保存先: {os.path.abspath(save_dir)}")
+    current_target = args.target
+    target_classes = {
+        ord('0'): 'volleyball_pink',
+        ord('1'): 'volleyball_cyan',
+        ord('2'): 'plate',
+        ord('3'): 'block_red',
+        ord('4'): 'block_blue',
+    }
 
     # 1. RealSenseのパイプライン初期化
     pipeline = rs.pipeline()
@@ -111,6 +117,8 @@ def main():
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
             # 5. 結果の表示
+            cv2.putText(annotated_image, f"Target: {current_target} (Change: 0-4)", (10, 30),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
             cv2.imshow('RealSense YOLO Detection', annotated_image)
 
             # キー入力の処理
@@ -118,23 +126,31 @@ def main():
             
             # 's'キーで画像のみを保存
             if key == ord('s'):
+                base_dir = os.path.join(args.save_dir, current_target)
+                raw_dir = os.path.join(base_dir, 'raw')
+                os.makedirs(raw_dir, exist_ok=True)
+                
                 # タイムスタンプでユニークなファイル名を作成
                 filename = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3] + ".jpg"
-                filepath = os.path.join(save_dir, filename)
+                filepath = os.path.join(raw_dir, filename)
                 
                 # 枠が描かれていない「生の画像(color_image)」のみ保存
                 cv2.imwrite(filepath, color_image)
-                print(f"📸 画像のみを保存しました: {filepath}")
+                print(f"📸 画像のみを保存しました [{current_target}]: {filepath}")
 
             # 'a'キーで画像とアノテーションの両方を保存（オートアノテーション）
             elif key == ord('a'):
+                base_dir = os.path.join(args.save_dir, current_target)
+                annotated_dir = os.path.join(base_dir, 'annotated')
+                os.makedirs(annotated_dir, exist_ok=True)
+                
                 base_filename = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
-                img_filepath = os.path.join(save_dir, base_filename + ".jpg")
-                txt_filepath = os.path.join(save_dir, base_filename + ".txt")
+                img_filepath = os.path.join(annotated_dir, base_filename + ".jpg")
+                txt_filepath = os.path.join(annotated_dir, base_filename + ".txt")
                 
                 # [重要] アノテーション用には枠が描かれていない「生の画像(color_image)」を保存します
                 cv2.imwrite(img_filepath, color_image)
-                print(f"📸 画像を保存しました: {img_filepath}")
+                print(f"📸 画像を保存しました [{current_target}]: {img_filepath}")
 
                 # アノテーション結果をYOLOフォーマットで自動保存（オートアノテーション）
                 img_h, img_w, _ = color_image.shape
@@ -152,7 +168,12 @@ def main():
                         # クラスID 中心X 中心Y 幅 高さ の形式で書き込み
                         f.write(f"{cls_id} {x_center:.6f} {y_center:.6f} {bbox_w:.6f} {bbox_h:.6f}\n")
                 
-                print(f"📝 アノテーションを自動保存しました: {txt_filepath}")
+                print(f"📝 アノテーションを自動保存しました [{current_target}]: {txt_filepath}")
+
+            # ターゲット変更キーの処理
+            elif key in target_classes:
+                current_target = target_classes[key]
+                print(f"🎯 撮影対象を '{current_target}' に変更しました。")
 
             # 'q'キーで終了
             elif key == ord('q'):

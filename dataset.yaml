@@ -6,11 +6,13 @@ path: ./yolo_assets/datasets/robocon_data # データセットのルートディ
 train: train/images # 学習用画像のディレクトリ (pathからの相対パス)
 val: valid/images # 検証用画像のディレクトリ (pathからの相対パス)
 
-# クラス数 (現状は水色とピンクのバレーボール、および中深皿の3つ。今後追加される場合は数値を増やす)
-nc: 3
+# クラス数 (現状は水色とピンクのバレーボール、中深皿、赤ブロック、青ブロックの5つ。今後追加される場合は数値を増やす)
+nc: 5
 
 # クラス名 (アノテーションツールで設定するクラスID（0, 1...）と対応させる必要があります)
 names:
   0: volleyball_pink
   1: volleyball_cyan
   2: plate
+  3: block_red
+  4: block_blue
