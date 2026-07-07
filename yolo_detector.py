@@ -14,16 +14,17 @@ class YoloDetector:
         self.model = YOLO(model_path)
         self.conf_threshold = conf_threshold
 
-    def detect(self, frame):
+    def detect(self, frame, imgsz=640):
         """
         画像フレームから物体検出を行う
         
         :param frame: OpenCV画像 (numpy array)
+        :param imgsz: 推論解像度 (デフォルト640, 下げると高速になる)
         :return: 描画済みの画像, 検出結果のリスト (ROS2メッセージ化しやすい形)
         """
         # 推論の実行
         # verbose=False で標準出力を減らし、ログを綺麗にします
-        results = self.model(frame, conf=self.conf_threshold, verbose=False)
+        results = self.model(frame, conf=self.conf_threshold, imgsz=imgsz, verbose=False)
         
         # 検出結果のバウンディングボックスを描画した画像を生成
         annotated_frame = results[0].plot()

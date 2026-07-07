@@ -4,6 +4,7 @@ import cv2
 import os
 import datetime
 import argparse
+import time
 from yolo_detector import YoloDetector
 
 def main():
@@ -22,6 +23,17 @@ def main():
         ord('2'): 'plate',
         ord('3'): 'block_red',
         ord('4'): 'block_blue',
+    }
+
+    # 各オブジェクトのデプス取得モード（実験用設定）
+    # 'center' : 中心点付近の中央値を取得 (ボールやブロックなど立体向け)
+    # 'near'   : 枠内の最近点(上位5%)を取得 (皿などパースで中心がズレやすい薄い物体向け)
+    depth_modes = {
+        'volleyball_pink': 'near',
+        'volleyball_cyan': 'center',
+        'plate': 'near',
+        'block_red': 'center',
+        'block_blue': 'center',
     }
 
     # 1. RealSenseのパイプライン初期化
@@ -58,6 +70,7 @@ def main():
     print("画像を保存するには 's' キーを押してください。")
 
     try:
+        prev_time = time.time()
         while True:
             # 3. フレームの取得と位置合わせ
             frames = pipeline.wait_for_frames()
@@ -83,42 +96,79 @@ def main():
             depth_intrin = depth_frame.profile.as_video_stream_profile().intrinsics
             for det in detections:
                 x1, y1, x2, y2 = det['bbox']
+                cls_name = det.get('class_name', '')
+                
                 cx = int((x1 + x2) / 2)
                 cy = int((y1 + y2) / 2)
-                
                 # インデックスの範囲外アクセスを防ぐためにクリップ
                 cx = max(0, min(cx, color_frame.width - 1))
                 cy = max(0, min(cy, color_frame.height - 1))
 
-                # 中心点から5x5ピクセルの領域で0以外の距離を取得（デプス欠損対策）
-                half_w = 2
+                # ユーザーが設定した辞書(depth_modes)に基づいて取得モードを決定
+                current_mode = depth_modes.get(cls_name, 'center')
+                mode_closest = (current_mode == 'near')
+
                 valid_distances = []
-                for dy in range(-half_w, half_w + 1):
-                    for dx in range(-half_w, half_w + 1):
-                        px, py = cx + dx, cy + dy
-                        if 0 <= px < color_frame.width and 0 <= py < color_frame.height:
+                
+                if mode_closest:
+                    # 最近点取得モード (案3: 枠内の縮小領域から最小に近い距離を探す)
+                    margin_x = int((x2 - x1) * 0.15)
+                    margin_y = int((y2 - y1) * 0.15)
+                    search_x1 = max(0, int(x1) + margin_x)
+                    search_x2 = min(color_frame.width - 1, int(x2) - margin_x)
+                    search_y1 = max(0, int(y1) + margin_y)
+                    search_y2 = min(color_frame.height - 1, int(y2) - margin_y)
+
+                    # 高速化のため3ピクセル飛ばしで検索
+                    for py in range(search_y1, search_y2 + 1, 3):
+                        for px in range(search_x1, search_x2 + 1, 3):
                             dist = depth_frame.get_distance(px, py)
                             if dist > 0:
                                 valid_distances.append(dist)
+                else:
+                    # 中心点取得モード（今まで通り 5x5 ピクセル）
+                    half_w = 2
+                    for dy in range(-half_w, half_w + 1):
+                        for dx in range(-half_w, half_w + 1):
+                            px, py = cx + dx, cy + dy
+                            if 0 <= px < color_frame.width and 0 <= py < color_frame.height:
+                                dist = depth_frame.get_distance(px, py)
+                                if dist > 0:
+                                    valid_distances.append(dist)
                 
-                # 有効な距離データがあれば、その中央値（ノイズに強い）を採用する
                 if len(valid_distances) > 0:
-                    distance = np.median(valid_distances)
-                    
+                    if mode_closest:
+                        # 案3: 極端な外れ値（ノイズ）を避けるため、上位5%（パーセンタイル）を最近点として扱う
+                        distance = np.percentile(valid_distances, 5)
+                        color = (0, 165, 255) # 違いがわかるように色を変える (オレンジ)
+                        mode_text = "Near"
+                    else:
+                        distance = np.median(valid_distances)
+                        color = (0, 255, 0) # 今まで通り (緑)
+                        mode_text = "Center"
+                        
                     # 3D座標の計算
                     x_val, y_val, z_val = rs.rs2_deproject_pixel_to_point(depth_intrin, [cx, cy], distance)
                     
                     # 画面表示用にミリメートルに変換して文字列を作成
-                    text = f"Dist: {distance:.2f}m ({x_val*1000:.0f}, {y_val*1000:.0f}, {z_val*1000:.0f})mm"
+                    text = f"Dist({mode_text}): {distance:.2f}m ({x_val*1000:.0f}, {y_val*1000:.0f}, {z_val*1000:.0f})mm"
                     
                     # 中心点（赤丸）とテキストを画面に描画
                     cv2.circle(annotated_image, (cx, cy), 4, (0, 0, 255), -1)
                     cv2.putText(annotated_image, text, (int(x1), int(y2) + 20),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+
+            # 時間計測とFPS計算
+            curr_time = time.time()
+            exec_time = curr_time - prev_time
+            prev_time = curr_time
+            fps = 1.0 / exec_time if exec_time > 0 else 0.0
 
             # 5. 結果の表示
             cv2.putText(annotated_image, f"Target: {current_target} (Change: 0-4)", (10, 30),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+            cv2.putText(annotated_image, f"FPS: {fps:.1f}", (10, 60),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (100, 255, 100), 2)
             cv2.imshow('RealSense YOLO Detection', annotated_image)
 
             # キー入力の処理
@@ -126,7 +176,8 @@ def main():
             
             # 's'キーで画像のみを保存
             if key == ord('s'):
-                base_dir = os.path.join(args.save_dir, current_target)
+                date_str = datetime.datetime.now().strftime("%Y-%m-%d")
+                base_dir = os.path.join(args.save_dir, date_str, current_target)
                 raw_dir = os.path.join(base_dir, 'raw')
                 os.makedirs(raw_dir, exist_ok=True)
                 
@@ -140,7 +191,8 @@ def main():
 
             # 'a'キーで画像とアノテーションの両方を保存（オートアノテーション）
             elif key == ord('a'):
-                base_dir = os.path.join(args.save_dir, current_target)
+                date_str = datetime.datetime.now().strftime("%Y-%m-%d")
+                base_dir = os.path.join(args.save_dir, date_str, current_target)
                 annotated_dir = os.path.join(base_dir, 'annotated')
                 os.makedirs(annotated_dir, exist_ok=True)
                 
