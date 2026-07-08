@@ -14,7 +14,7 @@ env/
 
 # YOLO & Datasets (容量が大きいためGit管理から除外)
 yolo_assets/
-yolo11n.pt
+*.pt
 
 # OS files
 .DS_Store
