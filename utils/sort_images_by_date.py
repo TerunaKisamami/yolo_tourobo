@@ -1,8 +1,14 @@
 import os
+import sys
 import shutil
 import re
 
-base_dir = '/home/hatsu/Robobobo/yolo_tourobo/yolo_assets/collected_images'
+# プロジェクトルートディレクトリの設定
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.append(project_root)
+
+base_dir = os.path.join(project_root, 'yolo_assets/collected_images')
 
 moved_count = 0
 

@@ -2,15 +2,21 @@ import pyrealsense2 as rs
 import numpy as np
 import cv2
 import os
+import sys
 import datetime
 import argparse
 import time
 from yolo_detector import YoloDetector
 
+# プロジェクトルートディレクトリの設定
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.append(project_root)
+
 def main():
     # コマンドライン引数の設定
     parser = argparse.ArgumentParser(description='RealSense YOLO Detection and Image Collection')
-    parser.add_argument('--save_dir', type=str, default='yolo_assets/collected_images', 
+    parser.add_argument('--save_dir', type=str, default=os.path.join(project_root, 'yolo_assets/collected_images'), 
                         help='基本の保存ディレクトリパス (デフォルト: yolo_assets/collected_images)')
     parser.add_argument('--target', type=str, default='block_red',
                         help='初期の撮影対象名。実行中に0〜4キーで変更可能です。')
@@ -50,8 +56,9 @@ def main():
     align = rs.align(align_to)
 
     # 2. YOLO検出器の初期化
-    # マージされたカスタム学習済みモデル（best.pt）を使用します。
-    detector = YoloDetector(model_path='yolo_assets/robocon_models/custom_model_v1/weights/best.pt', conf_threshold=0.5)
+    # FPS向上のため、OpenVINOモデルを指定します
+    model_path = os.path.join(project_root, 'yolo11n_openvino_model/')
+    detector = YoloDetector(model_path=model_path, conf_threshold=0.5)
 
     # RealSense SDK 組み込みフィルターの初期化（デプス欠損ゼロ対策）
     spatial_filter = rs.spatial_filter()
@@ -61,6 +68,8 @@ def main():
     try:
         print("RealSenseを起動しています...")
         profile = pipeline.start(config)
+        depth_sensor = profile.get_device().first_depth_sensor()
+        depth_scale = depth_sensor.get_depth_scale()
     except Exception as e:
         print(f"RealSenseの起動に失敗しました。カメラが接続されているか確認してください。")
         print(f"エラー詳細: {e}")
@@ -82,15 +91,17 @@ def main():
                 continue
 
             # デプスフレームにSDKフィルターを適用（欠損穴埋め・ノイズ除去）
-            depth_frame = spatial_filter.process(depth_frame)
-            depth_frame = temporal_filter.process(depth_frame)
+            # FPS向上のため重いフィルターは無効化しています
+            # depth_frame = spatial_filter.process(depth_frame)
+            # depth_frame = temporal_filter.process(depth_frame)
             depth_frame = hole_filling_filter.process(depth_frame).as_depth_frame()
 
             # RealSenseフレームをOpenCVで扱えるnumpy配列に変換
             color_image = np.asanyarray(color_frame.get_data())
+            depth_image = np.asanyarray(depth_frame.get_data())
 
-            # 4. YOLOで物体検出
-            annotated_image, detections = detector.detect(color_image)
+            # 4. YOLOで物体検出 (imgsz=320に下げて推論速度を上げる)
+            annotated_image, detections = detector.detect(color_image, imgsz=320)
 
             # 3D座標の計算と描画
             depth_intrin = depth_frame.profile.as_video_stream_profile().intrinsics
@@ -119,22 +130,15 @@ def main():
                     search_y1 = max(0, int(y1) + margin_y)
                     search_y2 = min(color_frame.height - 1, int(y2) - margin_y)
 
-                    # 高速化のため3ピクセル飛ばしで検索
-                    for py in range(search_y1, search_y2 + 1, 3):
-                        for px in range(search_x1, search_x2 + 1, 3):
-                            dist = depth_frame.get_distance(px, py)
-                            if dist > 0:
-                                valid_distances.append(dist)
+                    # 高速化のため、Numpyスライシングによる一括抽出
+                    depth_roi = depth_image[search_y1:search_y2 + 1, search_x1:search_x2 + 1]
+                    valid_distances = depth_roi[depth_roi > 0] * depth_scale
                 else:
                     # 中心点取得モード（今まで通り 5x5 ピクセル）
                     half_w = 2
-                    for dy in range(-half_w, half_w + 1):
-                        for dx in range(-half_w, half_w + 1):
-                            px, py = cx + dx, cy + dy
-                            if 0 <= px < color_frame.width and 0 <= py < color_frame.height:
-                                dist = depth_frame.get_distance(px, py)
-                                if dist > 0:
-                                    valid_distances.append(dist)
+                    depth_roi = depth_image[max(0, cy - half_w):min(color_frame.height, cy + half_w + 1),
+                                            max(0, cx - half_w):min(color_frame.width, cx + half_w + 1)]
+                    valid_distances = depth_roi[depth_roi > 0] * depth_scale
                 
                 if len(valid_distances) > 0:
                     if mode_closest:

@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 import os
+import sys
 import shutil
+
+# プロジェクトルートディレクトリの設定
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.append(project_root)
 
 def move_files_to_trained(base_dir):
     moved_count = 0
@@ -36,7 +42,7 @@ def move_files_to_trained(base_dir):
     return moved_count
 
 if __name__ == '__main__':
-    base_dir = os.path.join(os.path.dirname(__file__), 'yolo_assets', 'collected_images')
+    base_dir = os.path.join(project_root, 'yolo_assets', 'collected_images')
     if not os.path.exists(base_dir):
         print(f"エラー: {base_dir} が見つかりません。")
         exit(1)

@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
 import os
+import sys
 import shutil
 import re
+
+# プロジェクトルートディレクトリの設定
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.append(project_root)
 
 def migrate_structure(base_dir):
     moved_count = 0
@@ -26,7 +32,7 @@ def migrate_structure(base_dir):
 
             # すでに新しい階層 (Date -> Target -> ...) になっているかチェック
             if len(parts) >= 1 and re.match(r'\d{4}-\d{2}-\d{2}', parts[0]):
-                continue # 新階層のファイルはスキップ
+                continue # 新階層 of ファイルはスキップ
 
             # 日付の取得（ファイル名から）
             match = re.match(r'(\d{4})(\d{2})(\d{2})_\d{6}_\d{3}', file)
@@ -88,7 +94,7 @@ def migrate_structure(base_dir):
     print(f"📦 階層のマイグレーションが完了しました！ {moved_count} 個のファイルを新階層へ移動しました。")
 
 if __name__ == '__main__':
-    base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'yolo_assets', 'collected_images')
+    base_dir = os.path.join(project_root, 'yolo_assets', 'collected_images')
     if os.path.exists(base_dir):
         migrate_structure(base_dir)
     else:

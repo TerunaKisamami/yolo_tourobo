@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
 import os
+import sys
 import shutil
 import subprocess
+
+# プロジェクトルートディレクトリの設定
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.append(project_root)
 
 def merge_annotated_to_dataset(collected_dir, dataset_dir):
     print("🔄 新しいアノテーションデータをデータセットに統合します...")
@@ -33,9 +39,8 @@ def merge_annotated_to_dataset(collected_dir, dataset_dir):
     return copied_count
 
 if __name__ == '__main__':
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    collected_dir = os.path.join(base_dir, 'yolo_assets', 'collected_images')
-    dataset_dir = os.path.join(base_dir, 'yolo_assets', 'datasets', 'robocon_data')
+    collected_dir = os.path.join(project_root, 'yolo_assets', 'collected_images')
+    dataset_dir = os.path.join(project_root, 'yolo_assets', 'datasets', 'robocon_data')
 
     print("="*50)
     print("🤖 完全ローカル自動再学習 (Auto-Retraining)")
@@ -49,21 +54,24 @@ if __name__ == '__main__':
 
     # 2. 学習の実行
     print("\n🚀 学習プロセス (train.py) を開始します...")
-    result = subprocess.run(["python3", "train.py"], cwd=base_dir)
+    train_script = os.path.join(project_root, "training", "train.py")
+    result = subprocess.run(["python3", train_script], cwd=project_root)
     if result.returncode != 0:
         print("❌ 学習中にエラーが発生しました。処理を中断します。")
         exit(1)
 
     # 3. OpenVINO変換
     print("\n🚀 OpenVINO形式へのコンバート (convert_openvino.py) を開始します...")
-    result = subprocess.run(["python3", "convert_openvino.py"], cwd=base_dir)
+    convert_script = os.path.join(project_root, "utils", "convert_openvino.py")
+    result = subprocess.run(["python3", convert_script], cwd=project_root)
     if result.returncode != 0:
         print("❌ 変換中にエラーが発生しました。処理を中断します。")
         exit(1)
 
     # 4. 退避処理
     print("\n📦 学習に使った画像を 'trained' フォルダへ退避します...")
-    result = subprocess.run(["python3", "move_to_trained.py"], cwd=base_dir)
+    move_script = os.path.join(project_root, "utils", "move_to_trained.py")
+    result = subprocess.run(["python3", move_script], cwd=project_root)
     if result.returncode == 0:
         print("\n🎉 全ての自動学習プロセスが完了しました！")
     else:

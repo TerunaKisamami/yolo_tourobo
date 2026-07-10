@@ -1,6 +1,16 @@
 # YOLO Test プロジェクト ドキュメント
 
-このディレクトリ (`yolo_test`) には、ロボコン向けにYOLOを用いた物体検出とデータセット収集を行うためのスクリプト群が含まれています。
+このディレクトリ (`yolo_tourobo`) には、ロボコン向けにYOLOを用いた物体検出、データセット収集、学習を行うためのスクリプト群を用途ごとに整理して格納しています。
+
+## ディレクトリ構成
+
+本プロジェクトは以下の用途ごとにフォルダ分けされています。
+
+* **`inference/`**: カメラ映像からのリアルタイム物体検出、デプス（距離）測定、画像・アノテーションの自動収集
+* **`training/`**: 収集したデータセットを用いたYOLOモデルの学習
+* **`utils/`**: モデル形式の変換（OpenVINO）、データの仕分け、デプス測定評価などの補助ツール
+
+---
 
 ## 動作環境・依存関係
 以下のライブラリが必要です（`requirements.txt` に記載）。
@@ -14,51 +24,74 @@
 pip install -r requirements.txt
 ```
 
+---
+
 ## 各プログラムの仕様と使い方
 
-### 1. `predict_realsense.py`
-Intel RealSense カメラを使用したリアルタイム物体検出と、データセット収集（オートアノテーション機能付き）を行うスクリプトです。
+### 1. 推論・データ収集 (`inference/`)
+
+#### [predict_realsense.py](file:///home/hatsu/Robobobo/yolo_tourobo/inference/predict_realsense.py)
+Intel RealSense カメラを使用したリアルタイム物体検出と、データセット収集（オートアノテーション機能付き）を行うメインスクリプトです。
 
 **使い方**:
 ```bash
-python predict_realsense.py [--save_dir 保存先ディレクトリ]
+python inference/predict_realsense.py [--save_dir 保存先] [--target 初期対象]
 ```
-- RealSenseカメラの映像を取得し、リアルタイムでYOLOによる推論結果を画面に表示します。
-- **キー操作**:
-  - `s`キー: 現在のフレーム画像のみ（`.jpg`）を `yolo_assets/collected_images` に保存します（最初の手作業アノテーション用）。
-  - `a`キー: 現在のフレーム画像と、YOLOの推論結果を用いたアノテーションデータ（`.txt`）をセットで自動保存します（オートアノテーション用）。
-  - `q`キー: プログラムを終了します。
+* **キー操作**:
+  * `s`キー: 現在の生のフレーム画像のみ（`.jpg`）を `yolo_assets/collected_images/` に保存します（最初のアノテーション用）。
+  * `a`キー: 現在の生のフレーム画像と、YOLOの推論結果を用いたアノテーションデータ（`.txt`）をセットで自動保存します（オートアノテーション用）。
+  * `0`〜`4`キー: 撮影・アノテーション対象クラスを動的に切り替えます（`volleyball_pink`, `volleyball_cyan`, `plate`, `block_red`, `block_blue`）。
+  * `q`キー: プログラムを終了します。
 
+#### [predict_realsense_fast.py](file:///home/hatsu/Robobobo/yolo_tourobo/inference/predict_realsense_fast.py)
+OpenVINO形式（`yolo11n_openvino_model/`）を使用し、Intel CPU上での推論速度を大幅に高速化したリアルタイム測定用スクリプトです。
 
-### 3. `yolo_detector.py`
+**使い方**:
+```bash
+python inference/predict_realsense_fast.py
+```
+
+#### [yolo_detector.py](file:///home/hatsu/Robobobo/yolo_tourobo/inference/yolo_detector.py)
 YOLOの推論処理をまとめたモジュール（クラス）です。外部プログラム（ROS2ノードなど）から呼び出して利用しやすく設計されています。
 
-**主な機能**:
-- `YoloDetector(model_path, conf_threshold)`: 検出器の初期化。標準では `yolo11n.pt` が使用されます。
-- `detect(frame)`: OpenCV画像を入力として受け取り、バウンディングボックスが描画された画像と、検出結果のメタデータ（クラスID、名前、信頼度、座標）のリストを返します。
-- `export_to_openvino()`: Intel CPU (TH50など) での推論速度を向上させるため、モデルをOpenVINO形式にエクスポートします。
+---
 
-### 4. `train.py`
-独自データセットを用いてYOLOモデルを学習（ファインチューニング）させるためのスクリプトです。
+### 2. モデル学習 (`training/`)
+
+#### [train.py](file:///home/hatsu/Robobobo/yolo_tourobo/training/train.py) / [train_gpu.py](file:///home/hatsu/Robobobo/yolo_tourobo/training/train_gpu.py)
+独自データセットを用いてYOLOモデルを学習（ファインチューニング）させるためのスクリプトです。ローカルCPU向けとGPU向けの2つがあります。
 
 **使い方**:
 ```bash
-python train.py
+python training/train.py      # CPUでの学習 (TH50等)
+python training/train_gpu.py  # GPUでの学習 (RTX 3060等)
 ```
-- `dataset.yaml` の設定に基づき、軽量モデル `yolo11n.pt` をベースに学習を開始します。
-- デフォルトではCPU環境での学習になるよう設定されていますが、学習には非常に時間がかかるため、本格的な学習はGoogle Colab等のGPU環境で行うことが推奨されています。
-- 学習結果のモデルは `yolo_assets/robocon_models/custom_model_v1/weights/best.pt` に保存されます。
+* `dataset.yaml` の設定に基づき、軽量モデル `yolo11n.pt` をベースに学習を開始します。
+* 学習結果のモデルは `yolo_assets/robocon_models/custom_model_v1/weights/best.pt` に保存されます。
 
-### 5. `dataset.yaml`
-YOLO学習用のデータセット構成ファイルです。
-- `path`: データセットのルートディレクトリ
-- `train`, `val`: 学習用・検証用画像のパス
-- `nc`: クラス数
-- `names`: クラス名のマッピング (例: `0: volleyball_cyan`, `1: volleyball_pink`, `2: plate`)
+#### [auto_model_learn.py](file:///home/hatsu/Robobobo/yolo_tourobo/training/auto_model_learn.py)
+自動収集したデータのマージ、YOLOモデルの再学習、OpenVINO形式への再変換、使用済みデータの退避までを一貫して自動で行う再学習パイプラインスクリプトです。
+
+**使い方**:
+```bash
+python training/auto_model_learn.py
+```
+
+---
+
+### 3. ユーティリティツール (`utils/`)
+
+* **[convert_openvino.py](file:///home/hatsu/Robobobo/yolo_tourobo/utils/convert_openvino.py)**: 学習済みモデルをOpenVINO形式へコンバートします。
+* **[evaluate_3d_accuracy.py](file:///home/hatsu/Robobobo/yolo_tourobo/utils/evaluate_3d_accuracy.py)**: YOLOで検出したターゲットの3D座標 `(X, Y, Z)` をサンプリングし、実測値（真値）との誤差統計（MAE、標準偏差など）を自動算出します。
+* **[measure_raw_depth.py](file:///home/hatsu/Robobobo/yolo_tourobo/utils/measure_raw_depth.py)**: RealSenseのデプス欠損対策と精度測定を行い、`depth_evaluation.json` に評価結果を保存します。
+* **[move_to_trained.py](file:///home/hatsu/Robobobo/yolo_tourobo/utils/move_to_trained.py)**: 学習に使用した画像・アノテーションデータを `trained` フォルダへ退避させます。
+* **[sort_images_by_date.py](file:///home/hatsu/Robobobo/yolo_tourobo/utils/sort_images_by_date.py)**: 収集した画像ファイルを日付ごとに自動仕分けします。
 
 ---
 ## データセット収集のワークフロー（おすすめ）
-1. `predict_realsense.py` を起動し、対象物を様々な角度や環境下で映しながら `s` キーを押してデータを集めます。
-2. 自動生成された `.txt` ファイルを確認し、必要に応じて「labelImg」や「Roboflow」などのアノテーションツールで誤検出箇所を微修正します（完全にゼロからアノテーションするより大幅に時間を短縮できます）。
-3. 修正したデータと画像を `dataset.yaml` で指定したディレクトリ配置に整理し、`train.py`（または外部のGPU環境）で学習を実行して新しいモデル(`best.pt`)を作成します。
-4. 作成された `best.pt` を `yolo_detector.py` の読み込み元に指定し、再度 `predict_realsense.py` を起動して検出精度をテストします。
+1. `python inference/predict_realsense.py` を起動し、対象物を映しながら `s` キーを押してデータを集めます。
+2. 自動生成された `.txt` ファイルを確認・微修正し、データを `yolo_assets/datasets/robocon_data/` に配置します。
+3. `python training/train.py`（または GPU環境の `train_gpu.py`）を実行して学習し、新しい `best.pt` を作成します。
+4. `python utils/convert_openvino.py` でOpenVINO形式にエクスポートします。
+5. 作成されたモデルを `inference/yolo_detector.py` に指定して `predict_realsense_fast.py` を動かし、精度をテストします。
+

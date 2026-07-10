@@ -10,12 +10,12 @@
 
 実際の競技環境（照明条件や背景が本番に近い場所）で、バレーボールと中深皿の写真を様々な角度や距離から撮影します。
 
-`predict_realsense.py` を起動して撮影を行います。用途に合わせて以下のキーを使い分けてください：
+`inference/predict_realsense.py` を起動して撮影を行います。用途に合わせて以下のキーを使い分けてください：
 - **`s` キー**: 画像(`.jpg`)のみを保存します（最初の30〜50枚を集める時におすすめ）。
 - **`a` キー**: 画像(`.jpg`)と同時に、AIが予測した枠のテキストファイル(`.txt`)をセットで保存します（オートアノテーション）。
 
 > **💡 効率的な進め方（超おすすめ！）**
-> いきなり100〜200枚すべてを手作業でアノテーションするのは大変です。**まずは30〜50枚程度だけ集めてアノテーションし、一度AIを学習（`train.py`）させてみましょう。**
+> いきなり100〜200枚すべてを手作業でアノテーションするのは大変です。**まずは30〜50枚程度だけ集めてアノテーションし、一度AIを学習（`training/train.py`）させてみましょう。**
 > そこで出来たモデル（`best.pt`）を読み込ませてから残りの撮影を行うと、組み込まれた「オートアノテーション機能」が働き、残りのテキストファイルには**最初から自動で正解の枠が書き込まれた状態**になります！あとは間違いを手直しするだけで済むため、作業時間が劇的に短縮されます。最終的に1クラス100〜200枚程度を目指してデータを増やしていくのがベストです。
 
 ---
@@ -94,14 +94,14 @@ TH50には強力なNVIDIAのGPUが搭載されていませんが、Intelの **Op
 
 ### ステップ 1: モデルの変換（初回のみ）
 
-`yolo_detector.py` に、OpenVINO形式へ変換するための関数を用意しています。
-学習が終わって `best.pt` というモデルができたら、一度だけ `convert_openvino.py` を実行してモデルを変換します。
+`inference/yolo_detector.py` に、OpenVINO形式へ変換するための関数を用意しています。
+学習が終わって `best.pt` というモデルができたら、一度だけ `utils/convert_openvino.py` を実行してモデルを変換します。
 
 
 ### ステップ 2: 変換したモデルで実行
 
 エクスポートが完了すると、同じフォルダに `best_openvino_model` というディレクトリが作成されます。
-推論スクリプト (`predict_realsense.py`) のモデル読み込み部分を、このディレクトリパスに変更します。
+推論スクリプト (`inference/predict_realsense.py`) のモデル読み込み部分を、このディレクトリパスに変更します。
 
 ```python
 # 変更前
@@ -122,7 +122,7 @@ detector = YoloDetector(model_path='yolo_assets/robocon_models/custom_model_v1/w
 すでに学習済みの `best.pt` を使ってオートアノテーション（自動枠付け）を行い、効率よくデータを増やします。
 
 1. **推論スクリプトのモデルを書き換える**
-   [predict_realsense.py](file:///home/hatsu/Robobobo/yolo_tourobo/predict_realsense.py) を開き、初期化時の `model_path` を学習済みモデルに変更します。
+   [predict_realsense.py](file:///home/hatsu/Robobobo/yolo_tourobo/inference/predict_realsense.py) を開き、初期化時の `model_path` を学習済みモデルに変更します。
    ```python
    # 変更前
    detector = YoloDetector(model_path='yolo11n.pt', conf_threshold=0.5)
@@ -135,7 +135,7 @@ detector = YoloDetector(model_path='yolo_assets/robocon_models/custom_model_v1/w
 3. **Roboflowへの追加と手直し**
    保存された画像と `.txt` ファイルをまとめて Roboflow にアップロードすると、自動でアノテーションが読み込まれます。必要に応じて位置のズレのみを手動で修正します。
 4. **再学習とOpenVINO変換**
-   Roboflow で新しいバージョンを生成（Generate）してダウンロードし、`yolo_assets/datasets/robocon_data` に上書き配置した後、[train.py](file:///home/hatsu/Robobobo/yolo_tourobo/train.py) を実行して再学習し、[convert_openvino.py](file:///home/hatsu/Robobobo/yolo_tourobo/convert_openvino.py) を実行してモデルを更新します。
+   Roboflow で新しいバージョンを生成（Generate）してダウンロードし、`yolo_assets/datasets/robocon_data` に上書き配置した後、[train.py](file:///home/hatsu/Robobobo/yolo_tourobo/training/train.py) を実行して再学習し、[convert_openvino.py](file:///home/hatsu/Robobobo/yolo_tourobo/utils/convert_openvino.py) を実行してモデルを更新します。
 
 ---
 
@@ -158,14 +158,14 @@ detector = YoloDetector(model_path='yolo_assets/robocon_models/custom_model_v1/w
        3: target_box  # 新規追加
      ```
 4. **再学習とOpenVINO変換**
-   [train.py](file:///home/hatsu/Robobobo/yolo_tourobo/train.py) ➔ [convert_openvino.py](file:///home/hatsu/Robobobo/yolo_tourobo/convert_openvino.py) の順に実行して、新しいクラスに対応したモデルを作成します。
+   [train.py](file:///home/hatsu/Robobobo/yolo_tourobo/training/train.py) ➔ [convert_openvino.py](file:///home/hatsu/Robobobo/yolo_tourobo/utils/convert_openvino.py) の順に実行して、新しいクラスに対応したモデルを作成します。
 
 ---
 
 ## 4. ROS2への組み込みについて
 
-`predict_realsense.py` 内に `detections` というリストを取得している部分があります。
-ROS2のノードを作る際は、この推論部分（`yolo_detector.py`）をROS2の `Node` クラスの中で呼び出し、取得した `detections` の座標データ（バウンディングボックスの中心など）をパブリッシュする仕組みにすることで、ロボットの制御側で簡単に物体位置を受け取ることができます。
+`inference/predict_realsense.py` 内に `detections` というリストを取得している部分があります。
+ROS2のノードを作る際は、この推論部分（`inference/yolo_detector.py`）をROS2の `Node` クラスの中で呼び出し、取得した `detections` の座標データ（バウンディングボックスの中心など）をパブリッシュする仕組みにすることで、ロボットの制御側で簡単に物体位置を受け取ることができます。
 
 ---
 
@@ -221,7 +221,7 @@ Roboflowを使わずに、現場（オフライン環境）で撮影したデー
 
 ### ⚠️ 重大なデメリット・注意点（AIがバカになるリスク）
 この自動化には**「間違った学習データの増幅」**という非常に危険なリスクがあります。
-`predict_realsense.py` 中に `a` キーを押すと、現在のAIの認識枠がそのまま「正解」として保存されます。もしAIが別の物体を誤認識している時に `a` キーを押してしまうと、その**「間違った認識」を正解として再学習してしまい、誤検知がさらに増える負のループ**に陥ります。
+`inference/predict_realsense.py` 中に `a` キーを押すと、現在のAIの認識枠がそのまま「正解」として保存されます。もしAIが別の物体を誤認識している時に `a` キーを押してしまうと、その**「間違った認識」を正解として再学習してしまい、誤検知がさらに増える負のループ**に陥ります。
 
 ### 💡 安全に運用するための絶対ルール
 この自動再学習ツールを使う場合は、以下の運用ルールを必ず守ってください。
@@ -230,16 +230,64 @@ Roboflowを使わずに、現場（オフライン環境）で撮影したデー
 
 ### 🔧 実行フロー（スクリプト実装例）
 
-もしこのアプローチを採用する場合、以下のような動作をする統合スクリプト（例：`auto_model_learn.py`）を作成します。
+もしこのアプローチを採用する場合、以下のような動作をする統合スクリプト（例：`training/auto_model_learn.py`）を作成します。
 
 1. **データの統合**
    `yolo_assets/collected_images/` 内にある `annotated` の画像と `.txt` ファイルを自動でスキャンし、YOLOの学習データセット（`yolo_assets/datasets/robocon_data/`）へコピーして統合する。
 2. **学習の実行**
-   裏で自動的に `train.py` と同じ学習プロセス（`YOLO(model).train(...)`）を起動する。
+   裏で自動的に `training/train.py` と同じ学習プロセス（`YOLO(model).train(...)`）を起動する。
 3. **OpenVINO変換**
    学習完了後、新しくできた `best.pt` を読み込んで自動的に `export(format='openvino')` を実行する。
 4. **クリーンアップ**
    学習に使い終わった `annotated` フォルダ内の画像を「学習済みフォルダ（`trained_images`など）」に移動し、二重学習を防ぐ。
 
 現場で「あ、少し認識が弱いな」と思ったら、**`predict_realsense.py`で完璧な瞬間だけを狙って数十枚 `a` キーで撮影し、`python auto_model_learn.py` を実行してコーヒーを飲んで待つだけ**で、環境に適応した最新モデルが完成するようになります。
+
+---
+
+## 7. 実機での3D座標・デプス精度評価（誤差測定）
+
+ロボットが物体（ボールや皿）へ正確にアプローチするためには、YOLOとRealSenseから得られる3D相対座標 `(X, Y, Z)` がどれだけ信頼できるか（実際の物理的距離とのズレ）を把握しておく必要があります。
+
+### ツール1：デプス（距離）センサー自体の基本誤差・ブレ測定
+壁などの平面を利用して、RealSenseの距離測定自体のノイズを測定します。
+
+```bash
+python3 utils/measure_raw_depth.py
+```
+- **手順**:
+  1. カメラを平らな壁に向け、三脚などで固定します。
+  2. カメラから壁までの距離をメジャーで正確に測っておきます（例: 1000mm）。
+  3. スクリプトを起動し、中央の赤十字を壁に合わせます。
+  4. `r` キーを押して100フレーム分の距離データを記録します。
+  5. 終了後、コンソールおよび [depth_evaluation.json](file:///home/hatsu/Robobobo/yolo_tourobo/depth_evaluation.json) に統計情報（平均距離、標準偏差、最大最小の振幅）が出力されます。
+
+---
+
+### ツール2：YOLO検出ターゲットの3D座標精度評価
+YOLOのバウンディングボックスの認識に基づいて算出された3D座標 `(X, Y, Z)` について、実測値（メジャーでの計測値）との誤差統計を算出します。
+
+```bash
+python3 utils/evaluate_3d_accuracy.py --target block_red --x_true [実測X] --y_true [実測Y] --z_true [実測Z] --frames 100
+```
+
+#### 主な引数:
+- `--target`: 評価対象のクラス名 (`block_red`, `volleyball_pink` など)。
+- `--x_true`, `--y_true`, `--z_true`: メジャーで測定した、**カメラ原点（左レンズ中心）から対象物までの実際の座標（mm単位）**。
+- `--frames`: サンプリングする有効フレーム数（デフォルト: `100`）。
+- `--mock`: カメラが手元にないテスト環境で動作確認を行うためのシミュレーションモード。
+
+#### 手順:
+1. 対象物（例: `block_red`）をカメラの前に固定し、カメラからの物理的な位置 `(X, Y, Z)` をメジャーで測定します。
+   - 例: カメラの正面 600mm、左側に 10mm、高さは同じ位置にある場合 ➔ `x_true = -10`, `y_true = 0`, `z_true = 600`。
+2. 上記コマンドを実行します。画面にリアルタイムでYOLOの検出状況が表示されます。
+3. `r` キーを押すとサンプリング（記録）が開始されます。
+4. 設定した `--frames`（例: 100枚）のサンプリングが完了すると、自動的に計算が行われ、コンソールに統計表が表示されるとともに、[utils/3d_accuracy_evaluation.json](file:///home/hatsu/Robobobo/yolo_tourobo/utils/3d_accuracy_evaluation.json) に結果が保存されます。
+
+#### 📊 出力統計情報の見方:
+* **標準偏差 (StdDev)**: 測定の「ブレ」の大きさです。これが小さいほど測定値が安定しています。一般的に奥行き（Z）方向はブレやすくなります。
+* **平均絶対誤差 (MAE)**: 実測の「真値」から平均して何 mm ズレているかを示します。
+  - Z（奥行き）のMAEが大きい場合、`depth_modes`（中心の中央値を取るか、最近点を取るか）の調整で改善する可能性があります。
+  - X, YのMAEが大きい場合、カメラの設置角度（ピッチやロール）のズレ、あるいはYOLOのバウンディングボックスの中心が物体の中心からズレていることが考えられます。
+
 

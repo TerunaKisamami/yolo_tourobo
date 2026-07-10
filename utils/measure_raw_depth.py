@@ -2,6 +2,13 @@ import pyrealsense2 as rs
 import numpy as np
 import cv2
 import collections
+import os
+import sys
+
+# プロジェクトルートディレクトリの設定
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.append(project_root)
 
 def main():
     # RealSense初期化
@@ -96,7 +103,7 @@ def main():
                             "max_mm": eval_max * 1000,
                             "fluctuation_mm": (eval_max - eval_min) * 1000
                         }
-                        with open("depth_evaluation.json", "w") as f:
+                        with open(os.path.join(project_root, "depth_evaluation.json"), "w") as f:
                             json.dump(out_data, f, indent=4)
                         print(f"\n=== 精度評価結果 ({out_data['average_mm']:.1f}mm) ===")
                         print(f"Average: {out_data['average_mm']:.2f} mm")
